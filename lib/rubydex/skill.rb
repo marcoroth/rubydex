@@ -19,7 +19,7 @@ module Rubydex
     class << self
       #: (String path) -> Rubydex::Skill
       def load(path)
-        from_content(File.read(path), path:)
+        from_content(File.read(path, encoding: Encoding::UTF_8), path:)
       rescue SystemCallError, IOError => e
         raise SkillError, "Cannot read skill file #{path}: #{e.message}"
       end

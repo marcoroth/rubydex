@@ -28,6 +28,26 @@ class SkillTest < Minitest::Test
     end
   end
 
+  def test_load_reads_the_file_as_utf8_regardless_of_the_default_external_encoding
+    with_context do |context|
+      context.write!("SKILL.md", <<~SKILL)
+        ---
+        name: my-skill
+        description: Does a thing — quickly.
+        ---
+
+        Some body text — with an em dash.
+      SKILL
+
+      skill = with_default_external_encoding(Encoding::US_ASCII) do
+        Rubydex::Skill.load(context.absolute_path_to("SKILL.md"))
+      end
+
+      assert_equal("Does a thing — quickly.", skill.description)
+      assert_equal("Some body text — with an em dash.", skill.body)
+    end
+  end
+
   def test_load_freezes_the_instance
     with_context do |context|
       context.write!("SKILL.md", <<~SKILL)
@@ -185,5 +205,25 @@ class SkillTest < Minitest::Test
     end
 
     assert_match(/Malformed YAML frontmatter/, error.message)
+  end
+
+  private
+
+  # A process with no UTF-8 locale (`LANG` and `LC_ALL` unset) starts with a US-ASCII default external encoding.
+  def with_default_external_encoding(encoding)
+    original = Encoding.default_external
+    silence_encoding_warning { Encoding.default_external = encoding }
+    yield
+  ensure
+    silence_encoding_warning { Encoding.default_external = original }
+  end
+
+  # Ruby warns about changing the default external encoding when running with warnings enabled.
+  def silence_encoding_warning
+    verbose = $VERBOSE
+    $VERBOSE = nil
+    yield
+  ensure
+    $VERBOSE = verbose
   end
 end
